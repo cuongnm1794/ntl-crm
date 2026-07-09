@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nestlé Call Center — Phân Tích Luồng Chức Năng</title>
+<script>
+(function(){var s=localStorage.getItem('ncc-theme');var d=s?s==='dark':matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.classList.toggle('dark',d)})();
+</script>
+<style>
+:root {
+  --bg:#FAF9F5; --surface:#FFFFFF; --surface2:#F0EEE6;
+  --ink:#141413; --body:#3D3D3A; --muted:#87867F;
+  --line:#D1CFC5; --line-soft:#E6E3DA;
+  --clay:#D97757; --clay-soft:rgba(217,119,87,0.10);
+  --olive:#788C5D; --olive-soft:rgba(120,140,93,0.12);
+  --blue:#5B7E96; --blue-soft:rgba(91,126,150,0.10);
+  --red:#C44E4E; --red-soft:rgba(196,78,78,0.10);
+  --green:#5E9B6E; --green-soft:rgba(94,155,110,0.10);
+  --purple:#7C6EAD; --purple-soft:rgba(124,110,173,0.10);
+  --gold:#C9A45C;
+  --zone:rgba(20,20,19,0.025); --zone-line:#D1CFC5;
+  --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Code","Fira Code",Consolas,"Courier New",monospace;
+}
+html.dark {
+  --bg:#141413; --surface:#1F1F1D; --surface2:#2A2A28;
+  --ink:#FAF9F5; --body:#D1CFC5; --muted:#87867F;
+  --line:#3D3D3A; --line-soft:#2A2A28;
+  --clay:#E48A6E; --clay-soft:rgba(228,138,110,0.14);
+  --olive:#9DB07C; --olive-soft:rgba(157,176,124,0.16);
+  --blue:#7FA3BC; --blue-soft:rgba(127,163,188,0.14);
+  --red:#E06A6A; --red-soft:rgba(224,106,106,0.14);
+  --green:#7ABF8A; --green-soft:rgba(122,191,138,0.14);
+  --purple:#9E8FD0; --purple-soft:rgba(158,143,208,0.14);
+  --gold:#D4B36F;
+  --zone:rgba(250,249,245,0.03); --zone-line:#3D3D3A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--body);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;line-height:1.6;
+}
+
+/* ── top bar ── */
+.bar{
+  position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:10px 20px;border-bottom:1px solid var(--line-soft);background:var(--bg);
+}
+.bar h1{font-weight:700;font-size:16px;color:var(--ink);letter-spacing:-0.01em}
+.bar .sub{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em}
+.spc{flex:1}
+#themeBtn{
+  font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;
+  padding:5px 10px;border:1px solid var(--line);border-radius:6px;
+  background:transparent;color:var(--muted);cursor:pointer;
+}
+#themeBtn:hover{color:var(--ink);border-color:var(--muted)}
+
+/* ── main content ── */
+.content{max-width:1120px;margin:0 auto;padding:0 24px 120px}
+section{scroll-margin-top:64px;margin-top:40px;padding-top:24px;border-top:1px solid var(--line-soft)}
+section:first-of-type{border-top:none;margin-top:16px}
+.s-head{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.s-head .n{font-family:var(--mono);font-size:12px;color:var(--clay);font-weight:600;width:26px;flex-shrink:0}
+.s-head h2{font-weight:700;font-size:20px;color:var(--ink);letter-spacing:-0.01em}
+.s-head .tag{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface2);padding:1px 8px;border-radius:999px}
+.s-desc{font-size:13px;color:var(--body);max-width:720px;margin:0 0 16px 36px;line-height:1.55}
+.s-desc code{font-family:var(--mono);font-size:11px;color:var(--clay);background:var(--clay-soft);padding:1px 5px;border-radius:3px}
+
+/* ── card ── */
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:16px 20px;margin-bottom:14px;
+}
+.card h3{font-weight:700;font-size:15px;color:var(--ink);margin-bottom:6px}
+.card h4{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--clay);margin-bottom:6px;margin-top:12px}
+.card h4:first-child{margin-top:0}
+.card p{font-size:13px;line-height:1.6;color:var(--body)}
+.card p+p{margin-top:6px}
+.card code{font-family:var(--mono);font-size:11px;color:var(--clay);background:var(--clay-soft);padding:1px 5px;border-radius:3px}
+.card ul,.card ol{margin-left:20px;font-size:13px;line-height:1.8}
+.card li{margin-bottom:2px}
+.card li code{font-size:10.5px}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:800px){.g2,.g3{grid-template-columns:1fr}}
+
+/* ── badges ── */
+.b{display:inline-block;padding:1px 7px;border-radius:999px;font-family:var(--mono);font-size:10px;font-weight:500;margin:1px}
+.b.admin{background:var(--red-soft);color:var(--red)}
+.b.pm{background:var(--purple-soft);color:var(--purple)}
+.b.cs{background:var(--blue-soft);color:var(--blue)}
+.b.tdv{background:var(--green-soft);color:var(--green)}
+.b.brand{background:rgba(201,164,92,0.15);color:var(--gold)}
+.b.public{background:var(--surface2);color:var(--muted);border:1px solid var(--line)}
+
+/* ── table ── */
+.tbl{overflow-x:auto;margin-bottom:14px}
+.tbl table{width:100%;border-collapse:collapse;font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.tbl th,.tbl td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.tbl th{font-family:var(--mono);font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);background:var(--surface2);font-weight:500}
+.tbl tr:hover td{background:var(--surface2)}
+.tbl td code{font-family:var(--mono);font-size:10.5px;color:var(--clay);background:var(--clay-soft);padding:1px 4px;border-radius:3px}
+
+/* ── flow chips ── */
+.flow{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-family:var(--mono);font-size:10.5px;margin:8px 0}
+.flow .st{padding:4px 11px;border-radius:999px;font-weight:500;white-space:nowrap;border:1.5px solid var(--line)}
+.flow .st.start{background:var(--green-soft);border-color:var(--green);color:var(--green)}
+.flow .st.end{background:var(--green-soft);border-color:var(--green);color:var(--green)}
+.flow .st.mid{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
+.flow .st.fail{background:var(--red-soft);border-color:var(--red);color:var(--red)}
+.flow .arr{color:var(--muted);margin:0 2px}
+
+/* ── process ── */
+.proc{background:var(--surface2);border:1px solid var(--line-soft);border-radius:8px;padding:12px 16px;margin:8px 0;font-size:12.5px;line-height:1.7}
+.proc .ph{display:inline-block;font-family:var(--mono);font-size:10px;background:var(--clay-soft);color:var(--clay);padding:2px 6px;border-radius:4px;margin-right:5px;font-weight:600}
+
+/* ── sequence ── */
+.seq{font-family:var(--mono);font-size:10.5px;line-height:1.8;color:var(--body);white-space:pre;background:var(--surface2);padding:12px 16px;border-radius:6px;overflow-x:auto;margin:8px 0}
+
+/* ── risk ── */
+.risk{background:var(--red-soft);border:1px solid var(--red);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:12.5px;line-height:1.5}
+.risk h4{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--red);margin-bottom:3px}
+
+/* ══════════ STAGE / SVG ══════════ */
+.stage{
+  position:relative;background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:14px;margin-bottom:14px;overflow:hidden;min-height:420px;
+}
+.stage-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.s-chip{
+  font-family:var(--mono);font-size:10px;letter-spacing:0.04em;
+  padding:3px 10px;border:1px solid var(--line);border-radius:999px;
+  background:transparent;color:var(--muted);cursor:pointer;transition:all .12s;
+}
+.s-chip:hover{color:var(--ink);border-color:var(--muted)}
+.s-chip.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.stage svg{width:100%;height:auto;display:block}
+.s-zone rect{fill:var(--zone);stroke:var(--zone-line);stroke-width:1;stroke-dasharray:5 4;rx:10}
+.s-zone .zt{font-family:var(--mono);font-size:9.5px;letter-spacing:0.08em;fill:var(--muted)}
+.s-node{cursor:pointer}
+.s-node rect{fill:var(--surface);stroke:var(--line);stroke-width:1.3;rx:6;transition:stroke .15s}
+.s-node:hover rect{stroke:var(--muted)}
+.s-node.sel rect{stroke:var(--clay)!important;stroke-width:1.8}
+.s-node.do rect{fill:var(--olive-soft);stroke:var(--olive)}
+.s-node.store rect{fill:var(--surface2)}
+.s-node.ext rect{stroke-dasharray:5 3}
+.s-node.gate rect{fill:var(--clay-soft);stroke:var(--clay)}
+.s-node .t{font-family:var(--sans);font-size:12px;font-weight:600;fill:var(--ink);pointer-events:none}
+.s-node .m{font-family:var(--mono);font-size:9px;fill:var(--muted);pointer-events:none}
+.s-edge{stroke:var(--muted);stroke-width:1.3;fill:none;marker-end:url(#am);transition:opacity .2s,stroke .2s}
+.s-edge.dash{stroke-dasharray:4 3}
+.s-elbl{font-family:var(--mono);font-size:9px;fill:var(--muted);transition:opacity .2s}
+/* flowing highlight */
+.stage.flowing .s-edge{opacity:0.12}
+.stage.flowing .s-elbl{opacity:0.12}
+.stage.flowing .s-node{opacity:0.28}
+.stage.flowing .s-zone{opacity:0.4}
+.stage.flowing .s-edge.lit{opacity:1;stroke:var(--clay);marker-end:url(#ac);stroke-dasharray:6 4;animation:march .9s linear infinite}
+.stage.flowing .s-elbl.lit{opacity:1;fill:var(--clay)}
+.stage.flowing .s-node.lit{opacity:1}
+.stage.flowing .s-node.lit rect{stroke:var(--clay)}
+@keyframes march{to{stroke-dashoffset:-12}}
+@media(prefers-reduced-motion:reduce){.stage.flowing .s-edge.lit{animation:none}}
+
+/* detail cards */
+.f-card{
+  position:absolute;max-width:320px;background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;padding:12px 14px;box-shadow:0 6px 24px rgba(0,0,0,0.08);
+  font-size:12.5px;line-height:1.5;z-index:10;display:none;
+}
+.f-card .fc-title{font-weight:700;font-size:14px;color:var(--ink);margin-bottom:2px}
+.f-card .fc-meta{font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-bottom:6px}
+.f-card .fc-body{color:var(--body)}
+.f-card .fc-close{position:absolute;top:8px;right:12px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}
+.f-card .fc-close:hover{color:var(--ink)}
+#flowcap{left:14px;bottom:14px;max-width:440px}
+#flowcap.show{display:block}
+#flowcap .fn{font-family:var(--mono);font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--clay);margin-bottom:6px}
+#flowcap ol{margin-left:16px}
+#flowcap li{font-size:12px;line-height:1.5}
+
+@media(max-width:800px){
+  .content{padding:0 12px 80px}
+  .bar{padding:8px 12px}
+  .stage{min-height:300px}
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>Nestlé Call Center</h1>
+  <div class="sub">Tài liệu luồng chức năng · v2026.07</div>
+  <div class="spc"></div>
+  <button id="themeBtn">Theme</button>
+</div>
+
+<div class="content">
+
+<!-- ═══════════════════════════════════════════════ 01: OVERVIEW ═══════ -->
+<section id="s01">
+<div class="s-head"><span class="n">01</span><h2>Tổng quan kiến trúc hệ thống</h2><span class="tag">Architecture</span></div>
+<p class="s-desc">
+Hệ thống quản lý và gửi mã thưởng (voucher) Nestlé qua <strong>Zalo ZNS (GapOne)</strong> và <strong>SMS (Gateway 8069)</strong>. 
+Tích hợp Call Center <strong>Alohub</strong>. Stack: NestJS 11 + React 18 (Ant Design 5) + PostgreSQL + Redis + BullMQ.
+</p>
+
+<div class="stage" id="stage-ov">
+<div class="stage-bar">
+  <button class="s-chip on" data-flow="all2">Tất cả</button>
+  <button class="s-chip" data-flow="import-flow">Nhập Voucher</button>
+  <button class="s-chip" data-flow="send-flow">Gửi ZNS/SMS</button>
+  <button class="s-chip" data-flow="momt-flow">SMS 8069</button>
+  <button class="s-chip" data-flow="lookup-flow">CSKH</button>
+  <button class="s-chip" data-flow="auth-flow">Đăng nhập</button>
+</div>
+<svg viewBox="0 0 1140 580" preserveAspectRatio="xMidYMid meet">
+<defs>
+  <marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10z" style="fill:var(--muted)"/>
+  </marker>
+  <marker id="ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10z" style="fill:var(--clay)"/>
+  </marker>
+</defs>
+
+<!-- ZONES -->
+<g class="s-zone"><rect x="10" y="24" width="220" height="530"/><text class="zt" x="22" y="42">FRONTEND — React SPA</text></g>
+<g class="s-zone"><rect x="250" y="24" width="360" height="530"/><text class="zt" x="262" y="42">BACKEND — NestJS API</text></g>
+<g class="s-zone"><rect x="630" y="24" width="210" height="530"/><text class="zt" x="642" y="42">STORAGE &amp; QUEUES</text></g>
+<g class="s-zone"><rect x="860" y="24" width="268" height="530"/><text class="zt" x="872" y="42">EXTERNAL SERVICES</text></g>
+
+<!-- Frontend nodes -->
+<g class="s-node" data-k="login-ui"><rect x="25" y="62" width="190" height="40"/><text class="t" x="41" y="84">Trang Đăng Nhập</text><text class="m" x="41" y="96">Zustand persist store</text></g>
+<g class="s-node" data-k="import-ui"><rect x="25" y="116" width="190" height="40"/><text class="t" x="41" y="138">Quản Lý Import</text><text class="m" x="41" y="150">Upload Excel + poll 5s</text></g>
+<g class="s-node" data-k="voucher-ui"><rect x="25" y="170" width="190" height="40"/><text class="t" x="41" y="192">Quản Lý Voucher</text><text class="m" x="41" y="204">Filter + history + export</text></g>
+<g class="s-node" data-k="cskh-ui"><rect x="25" y="224" width="190" height="40"/><text class="t" x="41" y="246">Tra Cứu CSKH</text><text class="m" x="41" y="258">Timeline + tabs + đổi SĐT</text></g>
+<g class="s-node" data-k="call-ui"><rect x="25" y="278" width="190" height="40"/><text class="t" x="41" y="300">Alohub Calls</text><text class="m" x="41" y="312">Calls + cases + sync</text></g>
+<g class="s-node" data-k="admin-ui"><rect x="25" y="332" width="190" height="40"/><text class="t" x="41" y="354">Admin + Audit</text><text class="m" x="41" y="366">User mgmt · Logs · Report</text></g>
+<g class="s-node" data-k="momt-ui"><rect x="25" y="386" width="190" height="40"/><text class="t" x="41" y="408">MO/MT History</text><text class="m" x="41" y="420">SMS logs + KPI</text></g>
+<g class="s-node" data-k="dash-ui"><rect x="25" y="440" width="190" height="40"/><text class="t" x="41" y="462">Dashboard + Export</text><text class="m" x="41" y="474">KPI cards + Excel export</text></g>
+
+<!-- Backend nodes -->
+<g class="s-node" data-k="auth-svc"><rect x="265" y="56" width="155" height="48"/><text class="t" x="281" y="76">Auth Module</text><text class="m" x="281" y="92">JWT · bcrypt · refresh · tokenVersion</text></g>
+<g class="s-node gate" data-k="guards"><rect x="440" y="56" width="155" height="48"/><text class="t" x="456" y="76">Guards &amp; Interceptors</text><text class="m" x="456" y="92">JWT → Roles → Nonce → RateLimit</text></g>
+<g class="s-node" data-k="voucher-svc"><rect x="265" y="122" width="155" height="48"/><text class="t" x="281" y="142">VouchersModule</text><text class="m" x="281" y="158">CRUD · Import jobs · Send logs</text></g>
+<g class="s-node do" data-k="import-worker"><rect x="440" y="122" width="155" height="48"/><text class="t" x="456" y="142">VoucherImportProcessor</text><text class="m" x="456" y="158">Parse Excel → validate → insert</text></g>
+<g class="s-node" data-k="cskh-svc"><rect x="265" y="188" width="155" height="48"/><text class="t" x="281" y="208">CskhModule</text><text class="m" x="281" y="224">Lookup · Timeline · Phone change</text></g>
+<g class="s-node" data-k="gapone-svc"><rect x="440" y="188" width="155" height="48"/><text class="t" x="456" y="208">GapOneModule</text><text class="m" x="456" y="224">ZNS template · OAuth2 · Delivery</text></g>
+<g class="s-node" data-k="momt-svc"><rect x="265" y="254" width="155" height="48"/><text class="t" x="281" y="274">MomtModule</text><text class="m" x="281" y="290">MO SMS → parse → queue MT</text></g>
+<g class="s-node" data-k="alohub-svc"><rect x="440" y="254" width="155" height="48"/><text class="t" x="456" y="274">AlohubModule</text><text class="m" x="456" y="290">Webhook · Sync cases · KPI</text></g>
+<g class="s-node" data-k="report-svc"><rect x="265" y="320" width="155" height="48"/><text class="t" x="281" y="340">ReportsModule</text><text class="m" x="281" y="356">Dashboard · Delivery · Export</text></g>
+<g class="s-node" data-k="admin-svc"><rect x="440" y="320" width="155" height="48"/><text class="t" x="456" y="340">Admins + Audit</text><text class="m" x="456" y="356">CRUD · Disable · Audit log</text></g>
+<g class="s-node do" data-k="delivery-svc"><rect x="265" y="386" width="155" height="48"/><text class="t" x="281" y="406">DeliveryService</text><text class="m" x="281" y="422">Webhook receive + cron 60s</text></g>
+<g class="s-node do" data-k="send-worker"><rect x="440" y="386" width="155" height="48"/><text class="t" x="456" y="406">GaponeSendProcessor</text><text class="m" x="456" y="422">ZNS → POST a2p gateway</text></g>
+
+<!-- Storage nodes -->
+<g class="s-node store" data-k="pg"><rect x="645" y="72" width="180" height="48"/><text class="t" x="661" y="92">PostgreSQL</text><text class="m" x="661" y="108">14 tables · TypeORM</text></g>
+<g class="s-node store" data-k="redis"><rect x="645" y="136" width="180" height="48"/><text class="t" x="661" y="156">Redis</text><text class="m" x="661" y="172">Queue · Cache · Lock · RateLimit</text></g>
+<g class="s-node do" data-k="q-import"><rect x="645" y="200" width="180" height="60"/><text class="t" x="661" y="220">voucher-import Queue</text><text class="m" x="661" y="234">parse → validate → insert (100)</text><text class="m" x="661" y="248">3 retries · error XLSX output</text></g>
+<g class="s-node do" data-k="q-send"><rect x="645" y="276" width="180" height="60"/><text class="t" x="661" y="296">gapone-send Queue</text><text class="m" x="661" y="310">ZNS template → OAuth2 → POST</text><text class="m" x="661" y="324">mock · whitelist · SMS fallback</text></g>
+<g class="s-node do" data-k="q-export"><rect x="645" y="352" width="180" height="48"/><text class="t" x="661" y="372">export-jobs Queue</text><text class="m" x="661" y="388">XLSX/CSV · batch 5000</text></g>
+<g class="s-node do" data-k="q-mt"><rect x="645" y="416" width="180" height="48"/><text class="t" x="661" y="436">mt-8069 Queue</text><text class="m" x="661" y="452">MT SMS · Basic auth</text></g>
+
+<!-- External nodes -->
+<g class="s-node ext" data-k="gapone"><rect x="875" y="70" width="170" height="52"/><text class="t" x="891" y="92">GapOne a2p Gateway</text><text class="m" x="891" y="110">ZNS Zalo + SMS fallback</text></g>
+<g class="s-node ext" data-k="alohub"><rect x="875" y="140" width="170" height="52"/><text class="t" x="891" y="162">Alohub Call Center</text><text class="m" x="891" y="180">Webhook calls · Case API</text></g>
+<g class="s-node ext" data-k="gw8069"><rect x="875" y="210" width="170" height="52"/><text class="t" x="891" y="232">Gateway 8069</text><text class="m" x="891" y="250">SMS shortcode · Basic auth</text></g>
+<g class="s-node ext" data-k="enduser"><rect x="875" y="280" width="170" height="52"/><text class="t" x="891" y="302">Khách Hàng</text><text class="m" x="891" y="320">SMS "Nestle T5" → 8069</text></g>
+
+<!-- EDGES -->
+<path class="s-edge" id="e1" d="M215,82 C 240,80 252,80 265,80"/>
+<path class="s-edge" id="e2" d="M215,136 C 240,134 252,132 265,136"/>
+<path class="s-edge" id="e3" d="M215,244 C 240,242 252,210 265,210"/>
+<path class="s-edge" id="e4" d="M215,298 C 240,296 252,274 265,274"/>
+<path class="s-edge" id="e5" d="M215,352 C 240,350 252,340 265,340"/>
+<path class="s-edge" id="e6" d="M215,460 C 240,458 252,410 265,410"/>
+<path class="s-edge" id="e7" d="M420,80 C 430,78 438,80 440,80"/>
+<path class="s-edge" id="e8" d="M420,146 C 430,144 438,146 440,146"/>
+<path class="s-edge" id="e9" d="M420,212 C 430,210 438,212 440,212"/>
+<path class="s-edge" id="e10" d="M420,278 C 430,276 438,278 440,278"/>
+<path class="s-edge" id="e11" d="M420,344 C 430,342 438,344 440,344"/>
+<path class="s-edge" id="e12" d="M420,410 C 430,408 438,410 440,410"/>
+<path class="s-edge" id="e13" d="M595,96 C 625,94 633,96 645,96"/>
+<path class="s-edge" id="e14" d="M595,230 C 625,228 633,230 645,230"/>
+<path class="s-edge" id="e15" d="M595,306 C 625,304 633,306 645,306"/>
+<path class="s-edge" id="e16" d="M825,234 C 855,232 863,96 875,96"/>
+<path class="s-edge" id="e17" d="M825,166 C 855,164 863,166 875,166"/>
+<path class="s-edge" id="e18" d="M825,440 C 855,438 863,236 875,236"/>
+<path class="s-edge" id="e19" d="M825,410 C 855,408 863,306 875,306"/>
+<path class="s-edge dash" id="e20" d="M875,110 C 855,108 815,108 815,110"/>
+
+<text class="s-elbl" data-e="e1" x="242" y="75">login</text>
+<text class="s-elbl" data-e="e2" x="242" y="130">upload Excel</text>
+<text class="s-elbl" data-e="e3" x="242" y="235">lookup phone</text>
+<text class="s-elbl" data-e="e4" x="242" y="290">calls list</text>
+<text class="s-elbl" data-e="e5" x="242" y="345">admin CRUD</text>
+<text class="s-elbl" data-e="e6" x="242" y="455">KPI + export</text>
+<text class="s-elbl" data-e="e16" x="845" y="130">POST a2p-request</text>
+<text class="s-elbl" data-e="e17" x="845" y="160">webhook + sync</text>
+<text class="s-elbl" data-e="e18" x="845" y="270">send MT SMS</text>
+<text class="s-elbl" data-e="e19" x="845" y="340">MO: "Nestle T5"</text>
+
+</svg>
+
+<div class="f-card" id="flowcap"><div class="fn" id="fn"></div><ol id="fs"></ol></div>
+<div class="f-card" id="detail" style="right:14px;bottom:14px;width:320px">
+  <button class="fc-close" id="dclose">&times;</button>
+  <div class="fc-title" id="dt"></div>
+  <div class="fc-meta" id="dm"></div>
+  <div class="fc-body" id="db">Bấm vào bất kỳ node nào để xem chi tiết. Chọn chip phía trên để xem luồng dữ liệu theo chức năng.</div>
+</div>
+</div>
+
+<div class="g3">
+  <div class="card"><h4>Global Guards</h4><p><code>JwtAuthGuard</code> → <code>RolesGuard</code> → <code>NonceGuard</code> → <code>RateLimitGuard</code> (100 req/60s via Redis). <code>@Public()</code> bỏ qua JWT. <code>@Roles()</code> kiểm tra quyền.</p></div>
+  <div class="card"><h4>Global Interceptors</h4><p><code>LoggingInterceptor</code> (correlationId). <code>IdempotencyInterceptor</code> (Redis cache). <code>StripVoucherCodeInterceptor</code> (che mã voucher).</p></div>
+  <div class="card"><h4>4 BullMQ Queues</h4><p><code>voucher-import</code> · <code>gapone-send</code> · <code>export-jobs</code> · <code>mt-8069</code>. 3 retries, exponential backoff 3s, Redis backend.</p></div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════ 02: LOGIN ═══ -->
+<section id="s02">
+<div class="s-head"><span class="n">02</span><h2>Luồng đăng nhập &amp; Xác thực</h2><span class="tag">5 endpoints</span></div>
+
+<div class="g2">
+  <div class="card">
+    <h3>Mục đích</h3>
+    <p>Xác thực admin bằng JWT (access + refresh token). Access token ngắn hạn, refresh token 7 ngày với secret riêng. <code>tokenVersion</code> để thu hồi toàn bộ token khi đổi mật khẩu hoặc disable tài khoản.</p>
+    <h4>Actor tham gia</h4>
+    <p><span class="b admin">admin</span> <span class="b pm">pm</span> <span class="b cs">cs</span> <span class="b tdv">tdv</span> <span class="b brand">brand</span></p>
+  </div>
+  <div class="card">
+    <h3>Luồng chính</h3>
+    <div class="flow">
+      <span class="st start">POST /auth/login</span><span class="arr">→</span>
+      <span class="st mid">bcrypt verify</span><span class="arr">→</span>
+      <span class="st mid">JWT (sub, role, tv)</span><span class="arr">→</span>
+      <span class="st end">Zustand persist</span>
+    </div>
+    <div class="flow">
+      <span class="st start">401 response</span><span class="arr">→</span>
+      <span class="st mid">POST /auth/refresh</span><span class="arr">→</span>
+      <span class="st mid">verify refresh JWT + tv</span><span class="arr">→</span>
+      <span class="st end">new access token</span>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>API endpoints</h3>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Path</th><th>Auth</th><th>Mô tả</th></tr>
+    <tr><td>POST</td><td><code>/auth/login</code></td><td><span class="b public">Public + Throttle 5/min</span></td><td>Đăng nhập → access + refresh token. Payload: <code>{sub, role, tv}</code></td></tr>
+    <tr><td>POST</td><td><code>/auth/refresh</code></td><td><span class="b public">Public</span></td><td>Refresh token → access mới. Kiểm tra <code>tokenVersion</code></td></tr>
+    <tr><td>GET</td><td><code>/auth/me</code></td><td>JWT</td><td>Lấy profile admin hiện tại</td></tr>
+    <tr><td>PATCH</td><td><code>/auth/me/password</code></td><td>JWT</td><td>Đổi mật khẩu → tokenVersion++ → thu hồi toàn bộ token cũ</td></tr>
+    <tr><td>GET</td><td><code>/auth/nonce</code></td><td><span class="b public">Public</span></td><td>Lấy UUID nonce lưu Redis (TTL 300s)</td></tr>
+  </table></div>
+</div>
+
+<div class="card">
+  <h4>Rule / Validate</h4>
+  <ul>
+    <li><strong>TokenVersion:</strong> Mỗi lần đổi password/disable admin → +1 → token cũ vô hiệu.</li>
+    <li><strong>JwtStrategy:</strong> Kiểm tra admin tồn tại, <code>isActive=true</code>, <code>tokenVersion</code> khớp.</li>
+    <li><strong>Refresh Token:</strong> 7 ngày, secret riêng (<code>JWT_REFRESH_SECRET</code>).</li>
+    <li><strong>Frontend Axios interceptor:</strong> Tự động refresh khi 401 → retry request gốc. Refresh fail → clear auth → redirect /login.</li>
+    <li><strong>Rate Limit:</strong> 5 request/phút cho login endpoint.</li>
+    <li><strong>Seed accounts:</strong> Nếu <code>RUN_SEED=true</code>, tạo 5 tk mặc định: admin/admin123, pm/pm123456, cs/cs123456, tdv/tdv123, brand/brand123.</li>
+  </ul>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════ 03: PERMISSIONS ═══ -->
+<section id="s03">
+<div class="s-head"><span class="n">03</span><h2>Phân quyền &amp; Actor</h2><span class="tag">5 roles</span></div>
+
+<div class="tbl"><table>
+  <tr><th>Role</th><th>Menu &amp; Quyền truy cập</th><th>Mô tả</th></tr>
+  <tr><td><span class="b admin">admin</span></td><td>Dashboard · Admins · Voucher Imports · Vouchers · CSKH · MO/MT · Calls · G1 History · Audit · Profile</td><td>Quản trị toàn quyền</td></tr>
+  <tr><td><span class="b pm">pm</span></td><td>Dashboard · Profile</td><td>Project Manager — chỉ xem báo cáo</td></tr>
+  <tr><td><span class="b cs">cs</span></td><td>Dashboard · CSKH · Voucher Imports · Vouchers · G1 History · MO/MT · Calls · Profile</td><td>Customer Service — thao tác chính (import, tra cứu)</td></tr>
+  <tr><td><span class="b tdv">tdv</span></td><td>CSKH · Profile</td><td>Tư vấn viên — chỉ tra cứu</td></tr>
+  <tr><td><span class="b brand">brand</span></td><td>Dashboard · Profile</td><td>Nhãn hàng — xem + export</td></tr>
+</table></div>
+
+<div class="card">
+  <h4>Redirect mặc định theo role</h4>
+  <p>pm / cs / brand → <code>/admin/dashboard</code> · tdv → <code>/admin/cskh</code> · admin → <code>/admin/admins</code></p>
+  <h4 style="margin-top:10px">Cơ chế kiểm tra</h4>
+  <p><code>RolesGuard</code> kiểm tra <code>@Roles()</code> decorator. Admin role bypass mọi check. <code>ProtectedRoute</code> + <code>RoleRoute</code> ở frontend kiểm tra trước khi render.</p>
+</div>
+</section>
+
+<!-- ═══ 04: IMPORT ═══ -->
+<section id="s04">
+<div class="s-head"><span class="n">04</span><h2>Luồng nhập mã Voucher (Import)</h2><span class="tag">8 endpoints</span></div>
+<p class="s-desc">CS upload file Excel chứa danh sách voucher → <code>VoucherImportProcessor</code> xử lý 5 phase: parse → validate DB → batch insert → enqueue send → error XLSX.</p>
+
+<div class="card">
+  <h3>5 Phase xử lý trong <code>VoucherImportProcessor</code></h3>
+  <div class="proc">
+<span class="ph">Phase 1</span> <strong>Read &amp; Parse Excel:</strong> Đọc file bằng <code>xlsx</code> library. Kiểm tra 11 cột bắt buộc: <code>Tháng</code>, <code>StartDate</code>, <code>EndDate</code>, <code>Khu vực</code>, <code>Distributor</code>, <code>Customer</code>, <code>Customer name</code>, <code>Contact</code>, <code>RedeemCode</code>, <code>Value</code>, <code>Mapping</code>. Validate từng dòng: phone (VN mobile regex), month (1-12), voucherCode (6 ký tự), dates (DD/MM/YYYY), trùng code trong file, ZNS template field lengths.<br><br>
+<span class="ph">Phase 2</span> <strong>Pre-validate DB:</strong> Kiểm tra voucher code trùng trong <code>vouchers</code> table bằng <code>WHERE "voucherCode" = ANY($1)</code>.<br><br>
+<span class="ph">Phase 3</span> <strong>Batch Insert (transaction):</strong> Chia thành batch 100. Trong transaction: insert <code>Voucher</code> (status=PENDING), sync <code>customer_phone_map</code>, tạo <code>VoucherSendLog</code> (status=PENDING, trigger=auto, channel=ZNS).<br><br>
+<span class="ph">Phase 4</span> <strong>Enqueue Send:</strong> Với mỗi voucher đã insert thành công, thêm job vào <code>gapone-send</code> queue.<br><br>
+<span class="ph">Phase 5</span> <strong>Finalize:</strong> Generate error XLSX (ExcelJS WorkbookWriter). Flush errors mỗi 500 dòng. Update job status + audit log.
+  </div>
+</div>
+
+<div class="card">
+  <h4>API endpoints</h4>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Path</th><th>Roles</th><th>Mô tả</th></tr>
+    <tr><td>POST</td><td><code>/vouchers/import-jobs</code></td><td><span class="b cs">cs</span></td><td>Upload Excel (.xlsx/.xls/.csv, max 10MB) → tạo ImportJob (PENDING) → enqueue <code>voucher-import</code></td></tr>
+    <tr><td>GET</td><td><code>/vouchers/import-jobs</code></td><td><span class="b cs">cs</span></td><td>List jobs + auto-poll mỗi 5s nếu còn job active</td></tr>
+    <tr><td>GET</td><td><code>/vouchers/import-jobs/:id</code></td><td><span class="b cs">cs</span></td><td>Job detail: progress, stats, vouchers, error summary, send stats</td></tr>
+    <tr><td>GET</td><td><code>/vouchers/import-jobs/:id/errors</code></td><td><span class="b cs">cs</span></td><td>Paginated error list (row, message, voucherCode, phone)</td></tr>
+    <tr><td>GET</td><td><code>/vouchers/import-jobs/:id/errors.xlsx</code></td><td><span class="b cs">cs</span></td><td>Download error XLSX file</td></tr>
+    <tr><td>GET</td><td><code>/vouchers/import-jobs/:id/file</code></td><td><span class="b cs">cs</span></td><td>Download file gốc đã upload</td></tr>
+    <tr><td>GET</td><td><code>/vouchers/import-jobs/template</code></td><td><span class="b cs">cs</span></td><td>Download template Excel</td></tr>
+    <tr><td>GET</td><td><code>/vouchers</code></td><td><span class="b admin">admin</span> <span class="b cs">cs</span></td><td>List vouchers (search phone/code, filter status/date/importJobId)</td></tr>
+  </table></div>
+</div>
+
+<div class="card">
+  <h4>Edge cases &amp; Validate</h4>
+  <ul>
+    <li><strong>File sai định dạng:</strong> Lỗi ngay — không parse được Excel → FAILED.</li>
+    <li><strong>Hàng Excel trống:</strong> Bỏ qua, không tính lỗi.</li>
+    <li><strong>Voucher code trùng trong file:</strong> Ghi nhận dòng lỗi + dòng xuất hiện đầu tiên.</li>
+    <li><strong>Voucher code trùng DB:</strong> Phase 2 phát hiện → mark FAILED + error XLSX.</li>
+    <li><strong>Số điện thoại không hợp lệ:</strong> Regex <code>VN_MOBILE_PHONE_REGEX</code> — phải là số di động VN.</li>
+    <li><strong>ZNS field quá dài:</strong> <code>ten_chuong_trinh</code>(50), <code>so_dien_thoai</code>(15), <code>ten_CH</code>(50), <code>so_luong_qua</code>(50), <code>ma_tra_thuong</code>(20), <code>ngay_bat_dau</code>(20), <code>ngay_ket_thuc</code>(20).</li>
+    <li><strong>Import crash giữa chừng:</strong> Job FAILED, audit log ghi nhận, error XLSX được generate.</li>
+    <li><strong>Campaign guard:</strong> Kiểm tra <code>CAMPAIGN_START_AT</code> / <code>CAMPAIGN_END_AT</code> — chặn ngoài chiến dịch.</li>
+  </ul>
+</div>
+</section>
+
+<!-- ═══ 05: G1 SEND ═══ -->
+<section id="s05">
+<div class="s-head"><span class="n">05</span><h2>Luồng gửi Voucher qua GapOne (G1)</h2><span class="tag">5 endpoints</span></div>
+<p class="s-desc">Worker <code>GaponeSendProcessor</code> nhận job từ queue <code>gapone-send</code> → build ZNS template → OAuth2 → POST GapOne a2p gateway. Có SMS fallback, mock mode, whitelist.</p>
+
+<div class="g2">
+  <div class="card">
+    <h3>Xử lý trong <code>GaponeSendProcessor</code></h3>
+    <ol>
+      <li>Set voucher → <strong>SENDING</strong></li>
+      <li>Build ZNS template data (7 params)</li>
+      <li>OAuth2 client_credentials → GapOne (cache 60s)</li>
+      <li>POST <code>{gatewayUrl}/a2p-request</code></li>
+      <li>Nếu accepted (có messageId) → tạo <code>VoucherSendLog</code> (PENDING)</li>
+      <li>Nếu mock mode → success ngay</li>
+      <li>Nếu failed → voucher → FAILED</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3>Mock &amp; Whitelist &amp; SMS Fallback</h3>
+    <ul>
+      <li><strong>Mock mode:</strong> <code>GAPONE_MOCK=true</code> → giả lập thành công, không gọi API thật.</li>
+      <li><strong>Whitelist:</strong> Ngoài production, chỉ gửi đến số trong <code>GAPONE_SEND_PHONE_WHITELIST</code>.</li>
+      <li><strong>SMS fallback:</strong> Nếu <code>GAPONE_SMS_BRANDNAME</code> được cấu hình → gửi SMS (strip dấu tiếng Việt).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card">
+  <h4>7 ZNS Template Parameters</h4>
+  <div class="tbl"><table>
+    <tr><th>Parameter</th><th>Max length</th><th>Nguồn dữ liệu</th></tr>
+    <tr><td><code>ten_chuong_trinh</code></td><td>50</td><td>Excel column</td></tr>
+    <tr><td><code>so_dien_thoai</code></td><td>15</td><td>Contact phone</td></tr>
+    <tr><td><code>ten_CH</code></td><td>50</td><td>Customer name</td></tr>
+    <tr><td><code>so_luong_qua</code></td><td>50</td><td>Value / Mapping</td></tr>
+    <tr><td><code>ma_tra_thuong</code></td><td>20</td><td>VoucherCode (RedeemCode)</td></tr>
+    <tr><td><code>ngay_bat_dau</code></td><td>20</td><td>StartDate</td></tr>
+    <tr><td><code>ngay_ket_thuc</code></td><td>20</td><td>EndDate</td></tr>
+  </table></div>
+</div>
+
+<div class="card">
+  <h4>API endpoints</h4>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Path</th><th>Roles</th><th>Mô tả</th></tr>
+    <tr><td>GET</td><td><code>/vouchers/send-logs</code></td><td><span class="b admin">admin</span> <span class="b cs">cs</span></td><td>List send logs + stats by channel (ZNS success / SMS success / failed)</td></tr>
+    <tr><td>GET</td><td><code>/vouchers/send-logs/:id</code></td><td><span class="b admin">admin</span> <span class="b cs">cs</span></td><td>Send log detail + JSON request/response meta</td></tr>
+    <tr><td>GET</td><td><code>/vouchers/:id/send-history</code></td><td><span class="b admin">admin</span> <span class="b cs">cs</span></td><td>Lịch sử gửi của 1 voucher</td></tr>
+    <tr><td>GET</td><td><code>/vouchers/:id/phone-history</code></td><td><span class="b admin">admin</span> <span class="b cs">cs</span></td><td>Lịch sử đổi số điện thoại của voucher</td></tr>
+    <tr><td>GET</td><td><code>/vouchers/import-jobs/:id</code></td><td><span class="b cs">cs</span></td><td>Import job detail (kèm send stats)</td></tr>
+  </table></div>
+</div>
+</section>
+
+<!-- ═══ 06: DELIVERY ═══ -->
+<section id="s06">
+<div class="s-head"><span class="n">06</span><h2>Luồng nhận Delivery Status (Webhook + Cron)</h2><span class="tag">1 endpoint + cron</span></div>
+
+<div class="g2">
+  <div class="card">
+    <h3>Webhook path</h3>
+    <div class="flow">
+      <span class="st start">GapOne push DN</span><span class="arr">→</span>
+      <span class="st mid">POST /gapone/webhook/delivery</span><span class="arr">→</span>
+      <span class="st mid">resolveFromDeliveryStatus()</span><span class="arr">→</span>
+      <span class="st end">Update SendLog + Voucher</span>
+    </div>
+    <p style="margin-top:6px"><code>delivery_status &gt; 0</code> → <strong>SUCCESS</strong> (voucher → SENT)<br><code>delivery_status = -1</code> → <strong>FAILED</strong> (voucher → FAILED)<br><code>delivery_status = null</code> → <strong>PENDING</strong> (giữ nguyên)</p>
+  </div>
+  <div class="card">
+    <h3>Cron fallback (mỗi 60s)</h3>
+    <div class="flow">
+      <span class="st start">Cron 60s</span><span class="arr">→</span>
+      <span class="st mid">Query send_logs pending &gt;10min</span><span class="arr">→</span>
+      <span class="st mid">Batch 50 messageIds → queryDeliveryBatch()</span><span class="arr">→</span>
+      <span class="st end">applyDelivery()</span>
+    </div>
+    <p style="margin-top:6px">Fallback khi webhook không đến. Đảm bảo không bỏ sót delivery status.</p>
+  </div>
+</div>
+
+<div class="card">
+  <h4>API endpoint</h4>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Path</th><th>Auth</th><th>Mô tả</th></tr>
+    <tr><td>POST</td><td><code>/gapone/webhook/delivery</code></td><td><span class="b public">Public + key query</span></td><td>Nhận delivery notification từ GapOne. Xử lý cả webhook format và status-query format.</td></tr>
+  </table></div>
+</div>
+</section>
+
+<!-- ═══ 07: CSKH ═══ -->
+<section id="s07">
+<div class="s-head"><span class="n">07</span><h2>Luồng tra cứu CSKH</h2><span class="tag">3 endpoints</span></div>
+<p class="s-desc">CS/TDV nhập SĐT → <code>CskhService.lookup()</code> resolve customer codes → build tabs + timeline từ 4 nguồn dữ liệu (voucher, g1_send, call, case).</p>
+
+<div class="card">
+  <h3>Chi tiết <code>GET /cskh/customers?phone=...</code></h3>
+  <div class="proc">
+<span class="ph">Step 1</span> <strong>Normalize phone:</strong> Chuyển +84/84 → 0 prefix.<br>
+<span class="ph">Step 2</span> <strong>Resolve customer context:</strong> Tra <code>customer_phone_map</code> → lấy customer codes. Tra <code>phone_change_logs</code> JOIN vouchers → bổ sung customer codes. Tìm <code>vouchers</code> trực tiếp theo phone → bổ sung và tách legacy vouchers (không có customer code).<br>
+<span class="ph">Step 3</span> <strong>Build tabs:</strong> Mỗi customer code → 1 tab: summary (total + byStatus), event counts (voucher, g1_send, call, case trong 90 ngày), phone change history, danh sách voucher.<br>
+<span class="ph">Step 4</span> <strong>Legacy tab:</strong> Voucher không có customer code → tab "Không có Customer".
+  </div>
+</div>
+
+<div class="card">
+  <h3>Chi tiết <code>GET /cskh/customers/timeline?...</code></h3>
+  <div class="proc">
+<span class="ph">Step 1</span> <strong>Resolve timeline context:</strong> Chọn 1 customer (hoặc legacy). Liên kết vouchers + phones.<br>
+<span class="ph">Step 2</span> <strong>Fetch 4 source batches:</strong> 
+  <code>voucher</code> (từ voucher list), 
+  <code>g1_send</code> (từ <code>voucher_send_logs</code>), 
+  <code>call</code> (từ <code>alohub_calls</code> theo phones), 
+  <code>case</code> (từ <code>alohub_cases</code> theo phones).
+<br>
+<span class="ph">Step 3</span> <strong>Merge &amp; Paginate:</strong> Sort desc theo <code>createdAt</code>. Cursor-based pagination (base64 của <code>{createdAt}|{type}|{id}</code>). Max 100 events/request.
+  </div>
+</div>
+
+<div class="card">
+  <h4>API endpoints</h4>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Path</th><th>Roles</th><th>Mô tả</th></tr>
+    <tr><td>GET</td><td><code>/cskh/customers</code></td><td><span class="b cs">cs</span> <span class="b tdv">tdv</span></td><td>Tra cứu theo phone → tabs per customer code</td></tr>
+    <tr><td>GET</td><td><code>/cskh/customers/timeline</code></td><td><span class="b cs">cs</span> <span class="b tdv">tdv</span></td><td>Timeline 4 nguồn + cursor pagination (max 100 events)</td></tr>
+    <tr><td>PATCH</td><td><code>/cskh/customers/phone</code></td><td><span class="b admin">admin</span></td><td>Đổi SĐT liên hệ (idempotent, distributed lock Redis)</td></tr>
+  </table></div>
+</div>
+</section>
+
+<!-- ═══ 08: MO/MT ═══ -->
+<section id="s08">
+<div class="s-head"><span class="n">08</span><h2>Luồng MO/MT (SMS 8069)</h2><span class="tag">2 endpoints</span></div>
+
+<div class="card">
+  <h3>Khách hàng nhắn "Nestle T5" → 8069 → Hệ thống trả lời voucher</h3>
+  <div class="proc">
+<span class="ph">Step 1</span> <strong>Gateway 8069</strong> forward MO SMS tới <code>POST /momt/resend-voucher</code> (public).<br>
+<span class="ph">Step 2</span> <strong>Save MO log</strong> vào <code>mo_logs</code>.<br>
+<span class="ph">Step 3</span> <strong>Parse message:</strong> Regex <code>/^nestle\s+(0?[1-9]|1[0-2])$/i</code> → lấy tháng.<br>
+<span class="ph">Step 4</span> <strong>Check campaign time:</strong> So sánh <code>VALID_DATE_START</code> / <code>VALID_DATE_END</code>.<br>
+<span class="ph">Step 5</span> <strong>Find voucher:</strong> Tìm theo phone + month (ưu tiên send_log.status = SUCCESS).<br>
+<span class="ph">Step 6</span> <strong>Enqueue MT:</strong> Thêm job vào <code>mt-8069</code> queue.<br>
+<span class="ph">Step 7</span> <strong>ResendVoucherProcessor:</strong> POST <code>GW_URL_8069</code> (Basic auth) → lưu MT log vào <code>mt_logs</code>.
+  </div>
+</div>
+
+<div class="card">
+  <h4>API</h4>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Path</th><th>Auth</th><th>Mô tả</th></tr>
+    <tr><td>POST</td><td><code>/momt/resend-voucher</code></td><td><span class="b public">Public</span></td><td>Nhận MO SMS từ gateway 8069</td></tr>
+    <tr><td>GET</td><td><code>/momt</code></td><td><span class="b admin">admin</span> <span class="b tdv">tdv</span></td><td>Tra cứu MO/MT history (LEFT JOIN)</td></tr>
+  </table></div>
+  <h4 style="margin-top:10px">Message Templates (cấu hình env)</h4>
+  <p><code>MT_INVALID_SYNTAX</code> · <code>MT_DATE_START</code> · <code>MT_DATE_END</code> · <code>MT_NOT_FOUND_VOUCHER</code> · <code>MT_NOT_FOUND_USER</code> · <code>MT_RESEND_VOUCHER</code></p>
+</div>
+</section>
+
+<!-- ═══ 09: ALOHUB ═══ -->
+<section id="s09">
+<div class="s-head"><span class="n">09</span><h2>Luồng Alohub Calls &amp; Cases</h2><span class="tag">5 endpoints</span></div>
+
+<div class="card">
+  <h3>Mục đích</h3>
+  <p>Lưu lịch sử cuộc gọi từ call center Alohub. Đồng bộ case về DB. Phục vụ tra cứu trong CSKH timeline. Alohub gọi webhook <code>POST /alohub/webhook/calls</code> (public, xác thực API key) khi có cuộc gọi mới → upsert vào <code>alohub_calls</code>.</p>
+  <h4>Actor</h4>
+  <p><span class="b public">Alohub (webhook)</span> · <span class="b admin">admin</span> <span class="b cs">cs</span> (tra cứu + sync)</p>
+</div>
+
+<div class="card">
+  <h4>API</h4>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Path</th><th>Auth</th><th>Mô tả</th></tr>
+    <tr><td>POST</td><td><code>/alohub/webhook/calls</code></td><td><span class="b public">Public + API key</span></td><td>Webhook nhận cuộc gọi, upsert <code>alohub_calls</code></td></tr>
+    <tr><td>GET</td><td><code>/alohub/calls</code></td><td><span class="b admin">admin</span> <span class="b cs">cs</span></td><td>List calls + KPI (total, answered, noanswer, failed)</td></tr>
+    <tr><td>GET</td><td><code>/alohub/calls/:callId/cases</code></td><td><span class="b admin">admin</span> <span class="b cs">cs</span></td><td>Cases của 1 call</td></tr>
+    <tr><td>POST</td><td><code>/alohub/calls/:callId/sync-cases</code></td><td><span class="b admin">admin</span> <span class="b cs">cs</span></td><td>Sync cases từ Alohub API cho 1 call</td></tr>
+    <tr><td>POST</td><td><code>/alohub/cases/sync</code></td><td><span class="b admin">admin</span> <span class="b cs">cs</span></td><td>Batch sync (max 500 calls). Upsert unique (callId, caseId)</td></tr>
+  </table></div>
+</div>
+</section>
+
+<!-- ═══ 10: REPORTS ═══ -->
+<section id="s10">
+<div class="s-head"><span class="n">10</span><h2>Luồng Báo cáo &amp; Xuất dữ liệu</h2><span class="tag">4 reports + 4 export</span></div>
+
+<div class="card">
+  <h3>Report endpoints (read-only)</h3>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Path</th><th>Roles</th><th>Mô tả</th></tr>
+    <tr><td>GET</td><td><code>/reports/dashboard</code></td><td><span class="b pm">pm</span> <span class="b cs">cs</span> <span class="b brand">brand</span></td><td>KPI tổng: vouchers, send logs, import jobs, phone changes + stats by status</td></tr>
+    <tr><td>GET</td><td><code>/reports/voucher-delivery</code></td><td><span class="b pm">pm</span> <span class="b cs">cs</span> <span class="b brand">brand</span></td><td>Delivery report + KPI (znsSuccess, smsSuccess, failed)</td></tr>
+    <tr><td>GET</td><td><code>/reports/cskh-activity</code></td><td><span class="b pm">pm</span> <span class="b cs">cs</span> <span class="b brand">brand</span></td><td>Phone change activity</td></tr>
+    <tr><td>GET</td><td><code>/reports/momt-activity</code></td><td><span class="b pm">pm</span> <span class="b cs">cs</span> <span class="b brand">brand</span></td><td>MO/MT + KPI (totalMo, successMt, failedMt, pendingMt)</td></tr>
+  </table></div>
+  <h4 style="margin-top:10px">Export flow</h4>
+  <div class="flow">
+    <span class="st start">POST /exports/jobs</span><span class="arr">→</span>
+    <span class="st mid">export-jobs Queue</span><span class="arr">→</span>
+    <span class="st mid">ExportProcessor (batch 5000)</span><span class="arr">→</span>
+    <span class="st end">File → uploads/exports/</span>
+  </div>
+  <p>Report types: <code>voucher-list</code>, <code>voucher-delivery</code>, <code>cskh-activity</code>, <code>momt-activity</code>, <code>alohub-calls</code>. Format: XLSX/CSV (ExcelJS WorkbookWriter).</p>
+</div>
+</section>
+
+<!-- ═══ 11: ADMIN + AUDIT ═══ -->
+<section id="s11">
+<div class="s-head"><span class="n">11</span><h2>Luồng Quản trị Admin &amp; Audit</h2><span class="tag">7 endpoints</span></div>
+
+<div class="tbl"><table>
+  <tr><th>Method</th><th>Path</th><th>Roles</th><th>Mô tả</th></tr>
+  <tr><td>GET</td><td><code>/admins</code></td><td><span class="b admin">admin</span></td><td>List (search, filter role/isActive)</td></tr>
+  <tr><td>POST</td><td><code>/admins</code></td><td><span class="b admin">admin</span></td><td>Tạo admin (409 duplicate). Audit: <code>ADMIN_CREATE</code></td></tr>
+  <tr><td>PATCH</td><td><code>/admins/:id</code></td><td><span class="b admin">admin</span></td><td>Update. Đổi password → tokenVersion++. Audit: <code>ADMIN_UPDATE</code></td></tr>
+  <tr><td>POST</td><td><code>/admins/:id/disable</code></td><td><span class="b admin">admin</span></td><td>Disable + revoke tokens. Audit: <code>ADMIN_DISABLE</code></td></tr>
+  <tr><td>POST</td><td><code>/admins/:id/enable</code></td><td><span class="b admin">admin</span></td><td>Re-enable. Audit: <code>ADMIN_ENABLE</code></td></tr>
+  <tr><td>DELETE</td><td><code>/admins/:id</code></td><td><span class="b admin">admin</span></td><td>Alias disable (backward compat)</td></tr>
+  <tr><td>GET</td><td><code>/audit-logs</code></td><td><span class="b admin">admin</span></td><td>List logs (filter action/entity/date, JOIN admins)</td></tr>
+</table></div>
+
+<div class="card">
+  <h4>Audit actions chính</h4>
+  <p>
+    <code>ADMIN_CREATE</code> · <code>ADMIN_UPDATE</code> · <code>ADMIN_DISABLE</code> · <code>ADMIN_ENABLE</code> ·
+    <code>VOUCHER_IMPORT_STARTED</code> · <code>VOUCHER_IMPORT_COMPLETED</code> · <code>VOUCHER_IMPORT_FAILED</code> ·
+    <code>VOUCHER_PHONE_UPDATE</code> · <code>VOUCHER_RESEND_G1</code> ·
+    <code>CUSTOMER_PHONE_CHANGE</code> ·
+    <code>G1_DELIVERY_WEBHOOK</code> · <code>G1_DELIVERY_FAILED</code> ·
+    <code>AUTH_PASSWORD_CHANGE</code>
+  </p>
+  <p style="margin-top:4px">Mỗi mutation ghi before/after (JSON) + actorId + IP → tra cứu được ai làm gì, lúc nào, dữ liệu thay đổi ra sao.</p>
+</div>
+</section>
+
+<!-- ═══ 12: QUEUES ═══ -->
+<section id="s12">
+<div class="s-head"><span class="n">12</span><h2>Queue &amp; Xử lý bất đồng bộ</h2><span class="tag">4 queues</span></div>
+
+<div class="tbl"><table>
+  <tr><th>Queue</th><th>Worker</th><th>Kích hoạt</th><th>Xử lý</th></tr>
+  <tr><td><code>voucher-import</code></td><td><code>VoucherImportProcessor</code></td><td>CS upload Excel</td><td>Parse → validate DB → batch insert 100 (tx) → sync phone map → enqueue gapone-send → error XLSX</td></tr>
+  <tr><td><code>gapone-send</code></td><td><code>GaponeSendProcessor</code></td><td>Sau import / resend</td><td>ZNS template → OAuth2 → POST a2p gateway → tạo send log</td></tr>
+  <tr><td><code>export-jobs</code></td><td><code>ExportProcessor</code></td><td>User tạo export job</td><td>Batch 5000 records → XLSX/CSV (ExcelJS WorkbookWriter)</td></tr>
+  <tr><td><code>mt-8069</code></td><td><code>ResendVoucherProcessor</code></td><td>MO SMS từ khách</td><td>Build MT → POST Gateway 8069 (Basic auth) → lưu MT log</td></tr>
+</table></div>
+
+<div class="card">
+  <h4>Sequence: Import → Send → Delivery</h4>
+  <div class="seq">CS upload Excel
+    │
+    ▼
+VouchersController.createImportJob()
+    ├── Save file + Create ImportJob (PENDING)
+    ├── Audit VOUCHER_IMPORT_STARTED
+    └── Enqueue voucher-import job
+            │
+            ▼
+    VoucherImportProcessor.process()
+            ├── Phase 1: Parse + Validate Excel
+            ├── Phase 2: Pre-validate DB (dup codes)
+            ├── Phase 3: Batch insert 100 (transaction)
+            │            + sync customer_phone_map
+            │            + create VoucherSendLog (PENDING)
+            ├── Phase 4: Enqueue gapone-send × N
+            └── Phase 5: Error XLSX + Complete
+                    │
+                    ▼
+    GaponeSendProcessor.process() × N
+            ├── Voucher → SENDING
+            ├── Build ZNS template
+            ├── OAuth2 → POST Gateway a2p
+            └── Create VoucherSendLog (PENDING)
+                    │
+                    ▼
+    GaponeDeliveryService (webhook + cron 60s)
+            ├── SUCCESS → SendLog SUCCESS + Voucher SENT
+            └── FAILED → SendLog FAILED + Voucher FAILED</div>
+</div>
+</section>
+
+<!-- ═══ 13: STATE ═══ -->
+<section id="s13">
+<div class="s-head"><span class="n">13</span><h2>Sơ đồ trạng thái dữ liệu</h2><span class="tag">4 machines</span></div>
+
+<div class="g2">
+  <div class="card">
+    <h3>Voucher Status</h3>
+    <div class="flow"><span class="st start">PENDING</span><span class="arr">→</span><span class="st mid">SENDING</span><span class="arr">→</span><span class="st end">SENT</span></div>
+    <div class="flow"><span class="st start">PENDING</span><span class="arr">→</span><span class="st mid">SENDING</span><span class="arr" style="color:var(--red)">→</span><span class="st fail">FAILED</span></div>
+    <p style="margin-top:4px">PENDING: vừa import. SENDING: đang gửi G1. SENT: G1 confirm. FAILED: gửi thất bại.</p>
+  </div>
+  <div class="card">
+    <h3>Import Job Status</h3>
+    <div class="flow"><span class="st start">PENDING</span><span class="arr">→</span><span class="st mid">PROCESSING</span><span class="arr">→</span><span class="st end">COMPLETED</span></div>
+    <div class="flow"><span class="st start">PENDING</span><span class="arr">→</span><span class="st mid">PROCESSING</span><span class="arr" style="color:var(--red)">→</span><span class="st fail">FAILED</span></div>
+  </div>
+  <div class="card">
+    <h3>Send Log Status</h3>
+    <div class="flow"><span class="st start">PENDING</span><span class="arr">→</span><span class="st end">SUCCESS</span></div>
+    <div class="flow"><span class="st start">PENDING</span><span class="arr" style="color:var(--red)">→</span><span class="st fail">FAILED</span></div>
+  </div>
+  <div class="card">
+    <h3>Campaign Period</h3>
+    <div class="flow"><span class="st fail">before</span><span class="arr">→</span><span class="st end">active</span><span class="arr">→</span><span class="st fail">after</span></div>
+    <div class="flow"><span class="st end">active</span><span class="arr" style="color:var(--red)">→</span><span class="st fail">ended_early</span></div>
+    <p style="margin-top:4px">Kiểm tra qua <code>CAMPAIGN_START_AT</code> / <code>CAMPAIGN_END_AT</code>. <code>CampaignActiveGuard</code> chặn API ngoài chiến dịch.</p>
+  </div>
+</div>
+</section>
+
+<!-- ═══ 14: DATABASE ═══ -->
+<section id="s14">
+<div class="s-head"><span class="n">14</span><h2>Bảng dữ liệu (14 tables)</h2></div>
+
+<div class="tbl"><table>
+  <tr><th>Table</th><th>Module</th><th>Đọc/Ghi</th><th>Key columns</th></tr>
+  <tr><td><code>admins</code></td><td>Auth/Admin</td><td>Login(R), CRUD(RW)</td><td>username(unique), passwordHash(bcrypt), role(enum), tokenVersion, isActive</td></tr>
+  <tr><td><code>vouchers</code></td><td>Voucher</td><td>Import(W), CSKH(R), Send(W)</td><td>voucherCode(unique index), phone(index), status(enum), importJobId(FK)</td></tr>
+  <tr><td><code>voucher_import_jobs</code></td><td>Import</td><td>Upload(W), Poll(R)</td><td>fileName, filePath, status(enum), totalRows, errorSummary(jsonb)</td></tr>
+  <tr><td><code>voucher_import_job_errors</code></td><td>Import</td><td>Worker(W), UI(R)</td><td>importJobId(FK CASCADE), rowNumber, message, voucherCode, phone</td></tr>
+  <tr><td><code>voucher_send_logs</code></td><td>G1</td><td>Processor(W), Webhook(W), UI(R)</td><td>voucherId(index FK), channel, status, messageId(index), trigger, requestMeta(jsonb), responseMeta(jsonb)</td></tr>
+  <tr><td><code>customer_phone_map</code></td><td>CSKH</td><td>Import sync(W), Lookup(R)</td><td>phone(index), customerCode(index). Unique(phone, customerCode)</td></tr>
+  <tr><td><code>phone_change_logs</code></td><td>CSKH</td><td>Phone change(W), History(R)</td><td>voucherId(index), oldPhone(index), newPhone(index), actorId</td></tr>
+  <tr><td><code>export_jobs</code></td><td>Export</td><td>Create(W), Download(R)</td><td>reportType, format, status, filters(jsonb), filePath</td></tr>
+  <tr><td><code>voucher_tickets</code></td><td>Tickets (disabled)</td><td>—</td><td>type, status, sourcePhone, newPhone, proofFilePath</td></tr>
+  <tr><td><code>audit_logs</code></td><td>Audit</td><td>Every mutation(W), UI(R)</td><td>action(index), entityType, entityId, actorId(index), before(jsonb), after(jsonb)</td></tr>
+  <tr><td><code>alohub_calls</code></td><td>Alohub</td><td>Webhook(W), UI(R)</td><td>callId(unique), callStatus, callerNumber(index), rawPayload(jsonb)</td></tr>
+  <tr><td><code>alohub_cases</code></td><td>Alohub</td><td>Sync(W), UI(R)</td><td>callId(FK), caseId, phone(index). Unique(callId, caseId)</td></tr>
+  <tr><td><code>mo_logs</code></td><td>MO/MT</td><td>Public(W), UI(R)</td><td>moid, moseq, src, dest, cmdcode, msgbody</td></tr>
+  <tr><td><code>mt_logs</code></td><td>MO/MT</td><td>Worker(W), UI(R)</td><td>mtseq, moid, moseq, src, dest, msgbody, procresult</td></tr>
+</table></div>
+</section>
+
+<!-- ═══ 15: API SUMMARY ═══ -->
+<section id="s15">
+<div class="s-head"><span class="n">15</span><h2>Tổng hợp API (43 endpoints)</h2></div>
+
+<div class="tbl"><table>
+  <tr><th>#</th><th>Module</th><th>Method</th><th>Path</th><th>Roles</th><th>Queue</th></tr>
+  <tr><td>1-4</td><td>Auth</td><td>POST/GET/PATCH</td><td><code>/auth/login, /refresh, /me, /me/password</code></td><td>Public + JWT</td><td>—</td></tr>
+  <tr><td>5-10</td><td>Admins</td><td>CRUD</td><td><code>/admins, /admins/:id</code></td><td><span class="b admin">admin</span></td><td>—</td></tr>
+  <tr><td>11</td><td>Audit</td><td>GET</td><td><code>/audit-logs</code></td><td><span class="b admin">admin</span></td><td>—</td></tr>
+  <tr><td>12-16</td><td>Alohub</td><td>POST/GET</td><td><code>/alohub/...</code></td><td>Public + admin/cs</td><td>—</td></tr>
+  <tr><td>17-28</td><td>Voucher</td><td>GET/POST</td><td><code>/vouchers, /import-jobs, /send-logs</code></td><td>admin/cs</td><td>import</td></tr>
+  <tr><td>29-31</td><td>CSKH</td><td>GET/PATCH</td><td><code>/cskh/customers...</code></td><td>cs/tdv + admin</td><td>—</td></tr>
+  <tr><td>32</td><td>GapOne</td><td>POST</td><td><code>/gapone/webhook/delivery</code></td><td><span class="b public">Public</span></td><td>—</td></tr>
+  <tr><td>33-34</td><td>MO/MT</td><td>POST/GET</td><td><code>/momt/resend-voucher, /momt</code></td><td>Public + admin/tdv</td><td>mt-8069</td></tr>
+  <tr><td>35-38</td><td>Export</td><td>POST/GET</td><td><code>/exports/jobs</code></td><td>admin/brand</td><td>export</td></tr>
+  <tr><td>39-42</td><td>Reports</td><td>GET</td><td><code>/reports/...</code></td><td>pm/cs/brand</td><td>—</td></tr>
+  <tr><td>43</td><td>App</td><td>GET</td><td><code>/</code></td><td><span class="b public">Public</span></td><td>—</td></tr>
+</table></div>
+</section>
+
+<!-- ═══ 16: RISKS ═══ -->
+<section id="s16">
+<div class="s-head"><span class="n">16</span><h2>Các điểm rủi ro &amp; Cần làm rõ</h2></div>
+
+<div class="risk"><h4>1. Module Tickets bị disable</h4>Controller Tickets đã code đầy đủ nhưng bị comment khỏi module import. Service vẫn tồn tại. Cần xác nhận lý do và kế hoạch kích hoạt lại.</div>
+
+<div class="risk"><h4>2. Xác thực webhook GapOne + Alohub chưa rõ cơ chế chi tiết</h4>Cả hai webhook đều dùng public endpoint với key nhưng cơ chế xác thực cụ thể (header/query param/thuật toán) chưa được document rõ trong code.</div>
+
+<div class="risk"><h4>3. Nội dung SMS template (MT) chưa rõ</h4>Các template <code>MT_INVALID_SYNTAX</code>, <code>MT_DATE_START</code>, v.v. được cấu hình qua biến môi trường nhưng nội dung cụ thể chưa xác định.</div>
+
+<div class="risk"><h4>4. Campaign ended_early bị hardcode</h4><code>ended_early</code> trong <code>StatusService</code> không tự động set khi voucher hết. Cần xác nhận logic này có được sử dụng không.</div>
+
+<div class="risk"><h4>5. GapOne mock mode &amp; whitelist</h4>Ngoài production, chỉ gửi đến số trong whitelist. Cần xác nhận danh sách whitelist và cơ chế cập nhật.</div>
+
+<div class="risk"><h4>6. Không có alerting/notification</h4>Hệ thống chưa có cơ chế thông báo khi import lỗi, send thất bại hàng loạt, hay các sự kiện quan trọng. Chỉ có audit log thụ động.</div>
+
+<div class="risk"><h4>7. Concurrent phone change — Distributed lock</h4>Redis lock được dùng cho <code>changeCustomerContactPhone</code>. Cần xác nhận timeout lock và xử lý khi lock fail.</div>
+
+<div class="risk"><h4>8. Cursor pagination timeline</h4>Cursor format <code>{createdAt}|{type}|{id}</code>. Cần kiểm tra độ chính xác khi nhiều event cùng timestamp.</div>
+
+<div class="risk"><h4>9. ReportsHub frontend bị tạm ẩn</h4>Trang <code>/admin/reports</code> bị comment trong router frontend với ghi chú "temporarily hidden".</div>
+
+<div class="risk"><h4>10. XSS — dữ liệu từ Excel/SMS</h4>Cần xác nhận dữ liệu từ Excel import và SMS được sanitize đúng cách trước khi lưu/hiển thị.</div>
+</section>
+
+</div><!-- /content -->
+
+<script>
+(function(){
+
+// ── Theme toggle ──
+var themeBtn = document.getElementById('themeBtn');
+themeBtn.addEventListener('click', function(){
+  var dark = !document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark', dark);
+  localStorage.setItem('ncc-theme', dark ? 'dark' : 'light');
+});
+
+// ══════════ OVERVIEW STAGE ══════════
+var stage = document.getElementById('stage-ov');
+var chips = stage.querySelectorAll('.s-chip');
+var edges = stage.querySelectorAll('.s-edge');
+var elbls = stage.querySelectorAll('.s-elbl');
+var nodes = stage.querySelectorAll('.s-node');
+var fcap = document.getElementById('flowcap');
+var detail = document.getElementById('detail');
+var dt = document.getElementById('dt');
+var dm = document.getElementById('dm');
+var db = document.getElementById('db');
+
+var FLOWS = {
+  'all2': null,
+  'import-flow': {
+    name: 'Nhập Voucher — Upload Excel → Gửi ZNS',
+    edges: ['e2'],
+    nodes: ['import-ui','voucher-svc','import-worker','q-import','pg','redis','q-send','send-worker','gapone'],
+    steps: ['CS upload Excel → POST /vouchers/import-jobs','Tạo ImportJob (PENDING) + audit','voucher-import Queue: parse → validate → insert batch 100','Sync customer_phone_map → tạo VoucherSendLog','Enqueue gapone-send cho mỗi voucher','GaponeSendProcessor: ZNS template → OAuth2 → POST a2p']
+  },
+  'send-flow': {
+    name: 'Gửi ZNS/SMS — GaponeSendProcessor',
+    edges: ['e16'],
+    nodes: ['gapone-svc','send-worker','q-send','gapone','voucher-svc','pg'],
+    steps: ['Nhận job từ gapone-send queue','Set voucher → SENDING','Build ZNS template (7 params)','OAuth2 client_credentials → GapOne','POST {gatewayUrl}/a2p-request','Tạo VoucherSendLog (PENDING) → chờ delivery']
+  },
+  'momt-flow': {
+    name: 'SMS 8069 — Khách nhắn "Nestle T5"',
+    edges: ['e18','e19'],
+    nodes: ['momt-svc','q-mt','gw8069','enduser','pg'],
+    steps: ['Gateway 8069 → POST /momt/resend-voucher (public)','Save MO log → parse "Nestle T5" → tháng 5','Check campaign time → tìm voucher phone+month','Enqueue mt-8069','ResendVoucherProcessor: POST GW_URL_8069 (Basic auth)','Save MT log']
+  },
+  'lookup-flow': {
+    name: 'Tra cứu CSKH — Lookup + Timeline',
+    edges: ['e3'],
+    nodes: ['cskh-ui','cskh-svc','pg','redis'],
+    steps: ['Nhập SĐT → normalize (+84→0)','Resolve context: customer_phone_map + logs + vouchers','Build tabs per customer code (summary + events)','Timeline: merge 4 nguồn (voucher, g1_send, call, case)','Cursor pagination (max 100 events/request)']
+  },
+  'auth-flow': {
+    name: 'Đăng nhập — JWT + Refresh',
+    edges: ['e1'],
+    nodes: ['login-ui','auth-svc','guards','pg','redis'],
+    steps: ['POST /auth/login → bcrypt verify','JWT payload: {sub, role, tv}','Access + refresh token → Zustand persist','Axios interceptor: 401 → auto refresh','Đổi password → tokenVersion++ → revoke']
+  }
+};
+
+function setFlow(key) {
+  chips.forEach(function(c){ c.classList.toggle('on', c.dataset.flow === key); });
+  edges.forEach(function(e){ e.classList.remove('lit'); });
+  elbls.forEach(function(l){ l.classList.remove('lit'); });
+  nodes.forEach(function(n){ n.classList.remove('lit'); });
+  if (key === 'all2') { stage.classList.remove('flowing'); fcap.classList.remove('show'); return; }
+  var f = FLOWS[key];
+  if (!f) return;
+  stage.classList.add('flowing');
+  f.edges.forEach(function(id){ var e = document.getElementById(id); if (e) e.classList.add('lit'); });
+  elbls.forEach(function(l){ if (f.edges.indexOf(l.dataset.e) !== -1) l.classList.add('lit'); });
+  f.nodes.forEach(function(k){ var n = stage.querySelector('.s-node[data-k="'+k+'"]'); if (n) n.classList.add('lit'); });
+  document.getElementById('fn').textContent = f.name;
+  document.getElementById('fs').innerHTML = f.steps.map(function(s){ return '<li>'+s+'</li>'; }).join('');
+  fcap.classList.add('show');
+}
+chips.forEach(function(c){ c.addEventListener('click', function(){ setFlow(c.dataset.flow); }); });
+
+// ── Node detail cards ──
+var DETAILS = {
+  'login-ui': { t:'Trang Đăng Nhập', m:'React · Zustand persist', b:'Form username + password. Gọi <code>authStore.login()</code>. Redirect theo role. Token lưu localStorage + Zustand state.' },
+  'import-ui': { t:'Quản Lý Import', m:'Upload Excel · poll 5s', b:'Upload file (.xlsx/.xls/.csv, max 10MB). Theo dõi progress qua polling 5 giây. Xem error summary + download error file.' },
+  'voucher-ui': { t:'Quản Lý Voucher', m:'Filter · Lịch sử · Export', b:'Bảng voucher phân trang. Filter theo phone/code/status/date. Drawer lịch sử gửi + lịch sử đổi SĐT. Export XLSX/CSV.' },
+  'cskh-ui': { t:'Tra Cứu CSKH', m:'Lookup · Tabs · Timeline', b:'Nhập SĐT → tabs per customer code. Timeline tổng hợp 4 nguồn. Filter type + date range. Load more cursor pagination. Admin đổi SĐT.' },
+  'call-ui': { t:'Alohub Calls', m:'Calls · Cases · Sync', b:'Bảng calls phân trang + KPI. Drawer detail + cases. Nút sync cases thủ công hoặc batch.' },
+  'admin-ui': { t:'Admin + Audit', m:'User mgmt · Audit logs', b:'CRUD admin. Enable/disable. Audit log với filter action/entity/date. Expand row xem JSON diff.' },
+  'momt-ui': { t:'MO/MT History', m:'SMS logs · KPI', b:'Lịch sử MO/MT LEFT JOIN. Filter phone + date range. KPI: total MO, success MT. Export.' },
+  'dash-ui': { t:'Dashboard + Export', m:'KPI cards · Export modal', b:'KPI: vouchers, send logs, import jobs, phone changes + stats. Export modal chọn format → poll job completion → download.' },
+
+  'auth-svc': { t:'Auth Module', m:'JWT · bcrypt · refresh · tokenVersion', b:'Login: bcrypt verify → JWT <code>{sub, role, tv}</code>. Refresh: kiểm tra tokenVersion. Đổi password: tokenVersion++ → revoke all.' },
+  'guards': { t:'Guards & Interceptors', m:'JWT → Roles → Nonce → RateLimit', b:'4 global guards: <code>JwtAuthGuard</code> (bỏ qua @Public), <code>RolesGuard</code> (@Roles decorator), <code>NonceGuard</code> (Redis), <code>RateLimitGuard</code> (100/60s Redis).' },
+  'voucher-svc': { t:'VouchersModule', m:'CRUD · Import jobs · Send logs', b:'Controller: list vouchers, import jobs, send logs. Service: findAll với enrichment first-auto-send-log. Phone history lookup.' },
+  'import-worker': { t:'VoucherImportProcessor', m:'5 phases · batch 100 · tx', b:'Worker queue voucher-import. Phase 1: parse Excel. Phase 2: pre-validate DB. Phase 3: batch insert 100 (transaction). Phase 4: enqueue gapone-send. Phase 5: error XLSX.' },
+  'cskh-svc': { t:'CskhModule', m:'Lookup · Timeline · Phone change', b:'Lookup: resolve context → build tabs. Timeline: fetch 4 source batches → merge → cursor paginate (max 100). Phone change: distributed Redis lock.' },
+  'gapone-svc': { t:'GapOneModule', m:'ZNS template · OAuth2 · Delivery', b:'OAuth2 client_credentials → cache token 60s. Build ZNS template 7 params. Send via POST a2p-request. SMS fallback (strip dấu). Delivery webhook + cron.' },
+  'momt-svc': { t:'MomtModule', m:'MO SMS → parse → queue MT', b:'Nhận MO: save log → regex parse tháng → check campaign → find voucher → enqueue mt-8069. MT templates: invalid syntax, date range, not found, resend.' },
+  'alohub-svc': { t:'AlohubModule', m:'Webhook · Sync cases · KPI', b:'Webhook: upsert call. Sync cases: call Alohub API → extract from data/cases/items/results → upsert unique (callId, caseId). Batch max 500.' },
+  'report-svc': { t:'ReportsModule', m:'Dashboard · Delivery · Export', b:'Dashboard KPI: tổng vouchers, send logs, import jobs, phone changes + stats. 3 reports: voucher-delivery, cskh-activity, momt-activity.' },
+  'admin-svc': { t:'Admins + Audit', m:'CRUD · Disable · Audit log', b:'CRUD admin (409 duplicate). Disable → tokenVersion++. Audit log ghi before/after JSON + actorId + IP cho mọi mutation.' },
+  'delivery-svc': { t:'DeliveryService', m:'Webhook + cron 60s', b:'Webhook: resolveFromDeliveryStatus(). Cron: query send_logs pending >10min → batch 50 messageIds → queryDeliveryBatch() → apply.' },
+  'send-worker': { t:'GaponeSendProcessor', m:'ZNS → POST a2p', b:'Set voucher → SENDING. Build ZNS template. OAuth2 → POST gateway. Create VoucherSendLog. Mock mode: success ngay. Whitelist: block ngoài production.' },
+
+  'pg': { t:'PostgreSQL', m:'14 tables · TypeORM', b:'Primary data store. Tables: admins, vouchers, voucher_import_jobs, voucher_import_job_errors, voucher_send_logs, customer_phone_map, phone_change_logs, export_jobs, voucher_tickets (disabled), audit_logs, alohub_calls, alohub_cases, mo_logs, mt_logs.' },
+  'redis': { t:'Redis', m:'Queue · Cache · Lock · RateLimit', b:'BullMQ queues backend. Rate limiting (sliding window). Nonce storage. Idempotency key cache. Distributed locks. ioredis client with Sentinel support.' },
+  'q-import': { t:'voucher-import Queue', m:'Parse → validate → insert (100)', b:'3 retries, 3s backoff. VoucherImportProcessor. Parse Excel → pre-validate DB → batch insert 100 in tx → sync phone map → enqueue send → error XLSX.' },
+  'q-send': { t:'gapone-send Queue', m:'ZNS → OAuth2 → POST a2p', b:'3 retries. GaponeSendProcessor. Build template → OAuth2 → POST → create send log. Mock/whitelist support.' },
+  'q-export': { t:'export-jobs Queue', m:'XLSX/CSV · batch 5000', b:'ExportProcessor. Batch 5000 records từ DB → ExcelJS WorkbookWriter → file uploads/exports/.' },
+  'q-mt': { t:'mt-8069 Queue', m:'MT SMS · Basic auth', b:'ResendVoucherProcessor. Build SendMTReqDto → POST GW_URL_8069 (Basic auth) → save MT log. Dev mode: skip send.' },
+
+  'gapone': { t:'GapOne a2p Gateway', m:'ZNS Zalo + SMS fallback', b:'POST a2p-request với template data. Delivery notification qua webhook. Status query API cho cron fallback.' },
+  'alohub': { t:'Alohub Call Center', m:'Webhook calls · Case API', b:'Push webhook khi có cuộc gọi mới. API sync cases với endpoint cấu hình (GET/POST). Response parsed từ data/cases/items/results.' },
+  'gw8069': { t:'Gateway 8069', m:'SMS shortcode · Basic auth', b:'Forward MO SMS → POST /momt/resend-voucher. Nhận MT → gửi SMS đến user. Basic auth: GW_USER_8069 / GW_PASS_8069.' },
+  'enduser': { t:'Khách Hàng', m:'SMS "Nestle Tx" → 8069', b:'Nhắn tin theo format "Nestle T5" (tháng 1-12). Nhận MT trả lời với mã thưởng. Nhận ZNS Zalo message khi được gửi.' },
+};
+
+nodes.forEach(function(n){
+  n.addEventListener('click', function(){
+    nodes.forEach(function(x){ x.classList.remove('sel'); });
+    this.classList.add('sel');
+    var d = DETAILS[this.dataset.k];
+    if (!d) return;
+    dt.textContent = d.t;
+    dm.textContent = d.m;
+    db.innerHTML = d.b;
+    detail.style.display = 'block';
+  });
+});
+
+document.getElementById('dclose').addEventListener('click', function(){ detail.style.display = 'none'; });
+
+// Click stage background → deselect
+stage.addEventListener('click', function(e){
+  if (e.target === stage || e.target.tagName === 'svg' || e.target.closest('.s-zone')) {
+    nodes.forEach(function(n){ n.classList.remove('sel'); });
+    detail.style.display = 'none';
+  }
+});
+
+})();
+</script>
+</body>
+</html>
